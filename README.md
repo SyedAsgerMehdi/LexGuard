@@ -18,7 +18,7 @@ LexGuard is a premium, multi-agent adversarial legal risk analysis platform desi
 
 LexGuard is engineered as a **Zero-Setup Single Page Application (SPA)**, optimized for hackathons and offline demonstrations.
 - **Core:** Vanilla HTML5, CSS3, and modern Javascript.
-- **AI Core:** Google Gemini Pro (`v1beta` / `gemini-flash-latest`).
+- **AI Core:** Google Gemini Pro (`v1beta` / `gemini-2.5-flash`, with fallback support via Vercel API route).
 - **Parsers:** `mammoth.browser.js` (Word parsing), `jszip.js` (ZIP archive extractors).
 - **Typography:** `JetBrains Mono` (Terminal elements), `Outfit` & `Inter` (UI headers & content).
 
@@ -42,14 +42,11 @@ Double-click **`index.html`** in your File Explorer to run it directly inside yo
 
 ## 🔑 AI Key Setup
 
-To connect LexGuard to the live Gemini API:
+To connect LexGuard to the live Gemini API on Vercel:
 1. Get your API Key from [Google AI Studio](https://aistudio.google.com/).
-2. Open **`app.js`**.
-3. On **Line 13**, replace the placeholder with your key:
-   ```javascript
-   const GEMINI_API_KEY = "YOUR_ACTUAL_GEMINI_KEY";
-   ```
-4. Save the file and refresh your browser!
+2. In your Vercel project settings, add an environment variable named `GEMINI_API_KEY`.
+3. Redeploy the site so the `/api/gemini` route can use the key securely on the server.
+4. Open the deployed site and run a scan.
 
 ---
 

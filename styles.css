@@ -251,6 +251,27 @@ body {
     border-color: rgba(0, 240, 255, 0.5);
 }
 
+.api-status {
+    margin-top: 0.9rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.5px;
+    min-height: 1.2rem;
+    line-height: 1.4;
+}
+
+.api-status.is-loading {
+    color: var(--primary);
+}
+
+.api-status.is-error {
+    color: var(--danger);
+}
+
+.api-status.is-success {
+    color: var(--success);
+}
+
 .secondary-btn {
     background: transparent;
     border: 1px solid var(--glass-border);

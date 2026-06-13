@@ -8,10 +8,99 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadZone = document.getElementById('upload-zone');
     const loadingOverlay = document.getElementById('loading-overlay');
     const findingsList = document.getElementById('findings-list');
+    const apiStatusElement = document.getElementById('api-status');
 
-    // ⚠️ IMPORTANT: Replace this with your actual Gemini API Key from Google AI Studio or GCP
-    const GEMINI_API_KEY = "AIzaSyCAOvze0QerAc8qxMrmDPUKeyxP6Gu-U7M";
-    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+    const GEMINI_API_ROUTE = '/api/gemini';
+    const GEMINI_API_KEY_STORAGE_KEY = 'lexguardGeminiApiKey';
+
+    function getStoredGeminiApiKey() {
+        return localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '';
+    }
+
+    function promptForGeminiApiKey() {
+        const enteredKey = prompt('Enter a fresh Gemini API key to continue:');
+
+        if (enteredKey && enteredKey.trim()) {
+            const trimmedKey = enteredKey.trim();
+            localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, trimmedKey);
+            return trimmedKey;
+        }
+
+        return '';
+    }
+
+    async function callGeminiApi(requestBody, apiKeyOverride = '') {
+        let response;
+        const requestPayload = apiKeyOverride
+            ? { ...requestBody, apiKey: apiKeyOverride }
+            : requestBody;
+
+        try {
+            response = await fetch(GEMINI_API_ROUTE, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestPayload),
+            });
+        } catch (networkError) {
+            throw new Error(`Network error while calling the LexGuard API route: ${networkError.message}`);
+        }
+
+        if (response.status === 404) {
+            const error = new Error('The deployed site does not include the /api/gemini route yet. Redeploy the latest code on Vercel.');
+            error.code = 'API_ROUTE_NOT_FOUND';
+            throw error;
+        }
+
+        const rawText = await response.text();
+        let payload;
+
+        try {
+            payload = rawText ? JSON.parse(rawText) : {};
+        } catch {
+            throw new Error(rawText || response.statusText || 'Unexpected API response.');
+        }
+
+        if (!response.ok) {
+            const error = new Error(payload.error || payload.message || response.statusText || 'Gemini API request failed.');
+            error.code = payload.code || '';
+            throw error;
+        }
+
+        return payload;
+    }
+
+    function extractJsonPayload(rawText) {
+        const cleanedText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+        try {
+            return JSON.parse(cleanedText);
+        } catch {
+            const firstBrace = cleanedText.indexOf('{');
+            const lastBrace = cleanedText.lastIndexOf('}');
+
+            if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                const candidateJson = cleanedText.slice(firstBrace, lastBrace + 1);
+                return JSON.parse(candidateJson);
+            }
+
+            throw new Error(`Gemini returned non-JSON output: ${cleanedText.slice(0, 250)}`);
+        }
+    }
+
+    function setApiStatus(message, variant) {
+        if (!apiStatusElement) return;
+
+        apiStatusElement.textContent = message;
+        apiStatusElement.classList.remove('is-loading', 'is-error', 'is-success', 'text-muted');
+
+        if (variant) {
+            apiStatusElement.classList.add(variant);
+        } else {
+            apiStatusElement.classList.add('text-muted');
+        }
+    }
 
     const contractInput = document.getElementById('contract-input');
     const riskScoreElement = document.querySelector('.score-number');
@@ -349,18 +438,16 @@ document.addEventListener('DOMContentLoaded', () => {
     startAnalysisBtn.addEventListener('click', async () => {
         const textToAnalyze = contractInput.value.trim();
         if (!textToAnalyze && !uploadedFileData) {
-            alert("Please upload a file or paste a contract first.");
-            return;
-        }
-
-        if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
-            alert("Please add your Gemini API Key to app.js (line 12) before analyzing.");
+            alert('Please upload a file or paste a contract first.');
             return;
         }
 
         showLoading();
-        
-        try {
+        setApiStatus('Sending scan to Gemini through Vercel...', 'is-loading');
+
+        const storedApiKey = getStoredGeminiApiKey();
+
+        const buildRequestParts = () => {
             let systemPrompt = `You are LexGuard, an adversarial multi-agent AI system that analyzes contracts.
 Analyze the provided document or text to detect exploitative clauses, hidden liabilities, and legal ambiguities.
 Return the result strictly as a JSON object with this exact structure (no markdown formatting, just raw JSON). Ensure all fields are specific to the actual document provided:
@@ -392,14 +479,13 @@ Return the result strictly as a JSON object with this exact structure (no markdo
     }
   ]
 }`;
-            // If they pasted text (and didn't attach a base64 file), append the text.
+
             if (!uploadedFileData && textToAnalyze) {
                 systemPrompt += `\n\nText to analyze:\n${textToAnalyze}`;
             }
 
             const requestParts = [{ text: systemPrompt }];
 
-            // If a PDF or Image is attached, add it to the parts
             if (uploadedFileData) {
                 requestParts.push({
                     inlineData: {
@@ -409,54 +495,39 @@ Return the result strictly as a JSON object with this exact structure (no markdo
                 });
             }
 
-            const response = await fetch(GEMINI_API_URL, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: requestParts
-                    }],
-                    generationConfig: {
-                        responseMimeType: "application/json",
-                    }
-                })
-            });
+            return requestParts;
+        };
 
-            if (!response.ok) {
-                const errorBody = await response.json();
-                const errorMessage = errorBody.error ? errorBody.error.message : response.statusText;
-                throw new Error("API request failed: " + errorMessage);
-            }
+        const runAnalysis = async (apiKeyOverride = '') => {
+            const result = await callGeminiApi({
+                contents: [{
+                    parts: buildRequestParts()
+                }],
+                generationConfig: {
+                    responseMimeType: 'application/json',
+                }
+            }, apiKeyOverride);
 
-            const result = await response.json();
-            
             if (!result.candidates || result.candidates.length === 0) {
-                console.error("Gemini API returned no candidates:", result);
-                throw new Error("The AI returned an empty response. This might be due to safety filters blocking the document.");
+                console.error('Gemini API returned no candidates:', result);
+                throw new Error('The AI returned an empty response. This might be due to safety filters blocking the document.');
             }
-            
+
             if (!result.candidates[0].content || !result.candidates[0].content.parts || result.candidates[0].content.parts.length === 0) {
-                console.error("Gemini API blocked content:", result);
-                const blockReason = result.candidates[0].finishReason || "Unknown Reason";
+                console.error('Gemini API blocked content:', result);
+                const blockReason = result.candidates[0].finishReason || 'Unknown Reason';
                 throw new Error(`The AI blocked the response. Reason: ${blockReason}`);
             }
 
             const rawText = result.candidates[0].content.parts[0].text;
-            
-            // Clean up the text in case the model returns markdown JSON blocks
-            const jsonString = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-            const parsedData = JSON.parse(jsonString);
+            const parsedData = extractJsonPayload(rawText);
 
-            // Update UI with real data (Risk score converted to percentage)
             const percentage = Math.round(parsedData.riskScore * 10);
             riskScoreElement.textContent = percentage;
             riskStatusElement.textContent = parsedData.riskStatus;
 
-            // Update score color based on risk
             scoreCircle.classList.remove('high-risk', 'warning-risk', 'low-risk');
-            scoreCircle.style.borderColor = ''; // Clear any inline styles
+            scoreCircle.style.borderColor = '';
             riskStatusElement.classList.remove('text-danger', 'text-warning', 'text-success');
 
             if (parsedData.riskScore >= 7) {
@@ -471,13 +542,44 @@ Return the result strictly as a JSON object with this exact structure (no markdo
             }
 
             hideLoading();
+            setApiStatus('Analysis complete.', 'is-success');
             transitionToDashboard();
             populateDashboard(parsedData);
+        };
 
+        try {
+            await runAnalysis(storedApiKey);
         } catch (error) {
-            console.error("Analysis error:", error);
-            // Show ONLY the exact error so we don't confuse the user
-            alert("GOOGLE API ERROR: " + error.message);
+            console.error('Analysis error:', error);
+
+            if (error.code === 'MISSING_GEMINI_API_KEY' || error.code === 'GEMINI_KEY_REJECTED') {
+                const freshKey = promptForGeminiApiKey();
+                if (freshKey) {
+                    try {
+                        setApiStatus('Retrying with a fresh Gemini key...', 'is-loading');
+                        await runAnalysis(freshKey);
+                        return;
+                    } catch (retryError) {
+                        error = retryError;
+                    }
+                } else {
+                    error = new Error('A fresh Gemini API key is required to continue.');
+                }
+            }
+
+            let errorMessage = `API error: ${error.message}`;
+            if (error.code === 'MISSING_GEMINI_API_KEY') {
+                errorMessage = 'Vercel is missing the GEMINI_API_KEY environment variable. Add it in project settings and redeploy.';
+            } else if (error.code === 'GEMINI_KEY_REJECTED') {
+                errorMessage = 'The Gemini API key was rejected. Save a fresh key when prompted or replace the leaked Vercel secret.';
+            } else if (error.code === 'GEMINI_NETWORK_ERROR') {
+                errorMessage = 'The Vercel backend could not reach Gemini. Check the serverless function logs.';
+            } else if (error.code === 'API_ROUTE_NOT_FOUND') {
+                errorMessage = 'The deployed site does not include /api/gemini yet. Redeploy the latest build on Vercel.';
+            }
+
+            setApiStatus(errorMessage, 'is-error');
+            alert('LEXGUARD API ERROR: ' + error.message);
             hideLoading();
         }
     });
@@ -489,6 +591,7 @@ Return the result strictly as a JSON object with this exact structure (no markdo
         contractInput.value = '';
         contractInput.disabled = false;
         fileNameDisplay.textContent = "Upload Document";
+        setApiStatus('Ready to analyze.');
         transitionToHero();
     });
 
@@ -499,6 +602,7 @@ Return the result strictly as a JSON object with this exact structure (no markdo
         contractInput.value = '';
         contractInput.disabled = false;
         fileNameDisplay.textContent = "Upload Document";
+        setApiStatus('Ready to analyze.');
         transitionToHero();
     });
 });
