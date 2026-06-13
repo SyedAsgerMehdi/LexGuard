@@ -12,6 +12,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const GEMINI_API_ROUTE = '/api/gemini';
     const GEMINI_API_KEY_STORAGE_KEY = 'lexguardGeminiApiKey';
+        const MAX_TEXT_CHARS = 12000;
+
+        function buildFastSystemPrompt(textToAnalyze) {
+                const excerpt = (textToAnalyze || '').slice(0, MAX_TEXT_CHARS);
+
+                return `You are LexGuard. Analyze this contract text quickly and return strict JSON only.
+Schema:
+{
+    "riskScore": 1-10,
+    "riskStatus": "High Risk|Moderate Risk|Low Risk",
+    "aiSummary": "max 2 short sentences",
+    "stats": {"totalClauses": number, "dangerousClauses": number, "fairClauses": number},
+    "riskBreakdown": {"Liability": 0-100, "Termination": 0-100, "Privacy": 0-100, "Compensation": 0-100, "IP Rights": 0-100},
+    "improvements": ["specific fix 1", "specific fix 2"],
+    "findings": [
+        {"title": "...", "description": "...", "quote": "..."},
+        {"title": "...", "description": "...", "quote": "..."},
+        {"title": "...", "description": "...", "quote": "..."}
+    ]
+}
+Use concise outputs and prioritize highest-risk issues first.
+
+Text to analyze:
+${excerpt}`;
+        }
 
     function getStoredGeminiApiKey() {
         return localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '';
@@ -443,48 +468,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         showLoading();
-        setApiStatus('Sending scan to Gemini through Vercel...', 'is-loading');
+        setApiStatus('Sending fast scan to Gemini through Vercel...', 'is-loading');
 
         const storedApiKey = getStoredGeminiApiKey();
+                const cappedText = textToAnalyze.slice(0, MAX_TEXT_CHARS);
 
         const buildRequestParts = () => {
-            let systemPrompt = `You are LexGuard, an adversarial multi-agent AI system that analyzes contracts.
-Analyze the provided document or text to detect exploitative clauses, hidden liabilities, and legal ambiguities.
-Return the result strictly as a JSON object with this exact structure (no markdown formatting, just raw JSON). Ensure all fields are specific to the actual document provided:
-{
-  "riskScore": [Number between 1 and 10],
-  "riskStatus": "[Short string, e.g., 'High Risk', 'Moderate Risk']",
-  "aiSummary": "[A short, punchy 1-2 sentence summary of the biggest dangers and overall fairness.]",
-  "stats": {
-    "totalClauses": [Number of clauses/sections analyzed],
-    "dangerousClauses": [Number of problematic clauses found],
-    "fairClauses": [Number of fair/standard clauses]
-  },
-  "riskBreakdown": {
-    "Liability": [Score 0-100],
-    "Termination": [Score 0-100],
-    "Privacy": [Score 0-100],
-    "Compensation": [Score 0-100],
-    "IP Rights": [Score 0-100]
-  },
-  "improvements": [
-    "[Write a highly specific, actionable way to rewrite or negotiate the bad clauses found in THIS document]",
-    "[Write another highly specific improvement tailored to THIS document]"
-  ],
-  "findings": [
-    {
-      "title": "[Title of the dangerous clause]",
-      "description": "[Plain english explanation of why it's bad]",
-      "quote": "[Direct exact quote from the text]"
-    }
-  ]
-}`;
-
-            if (!uploadedFileData && textToAnalyze) {
-                systemPrompt += `\n\nText to analyze:\n${textToAnalyze}`;
-            }
-
-            const requestParts = [{ text: systemPrompt }];
+                        const requestParts = [{ text: buildFastSystemPrompt(cappedText) }];
 
             if (uploadedFileData) {
                 requestParts.push({
@@ -505,6 +495,8 @@ Return the result strictly as a JSON object with this exact structure (no markdo
                 }],
                 generationConfig: {
                     responseMimeType: 'application/json',
+                    temperature: 0.2,
+                    maxOutputTokens: 900,
                 }
             }, apiKeyOverride);
 
