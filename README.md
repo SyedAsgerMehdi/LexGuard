@@ -1,64 +1,74 @@
-# 🛡️ LexGuard — Adversarial AI Threat Intelligence & Contract Analyzer
+# ⚖️ LexGuard – AI-Powered Legal Assistant
 
-LexGuard is a premium, multi-agent adversarial legal risk analysis platform designed for developers, contractors, and builders. It parses complex documents (PDFs, Images, Word Docs, ZIP archives) and deploys Gemini-powered AI agents to scan for exploitative clauses, hidden liabilities, and unfair legal terms—presenting them in an interactive, cyberpunk hacker-themed terminal dashboard.
+LexGuard is a modern AI-powered legal assistant built using **Next.js**. It helps users simplify legal tasks by providing AI-powered legal guidance, contract analysis, legal notice generation, and lawyer consultation through a clean, responsive, and intuitive interface.
 
----
+## ✨ Features
+- ⚖️ AI-powered legal chatbot
+- 📄 Smart contract analysis
+- 📝 AI-generated legal notice creation
+- 👨‍⚖️ Lawyer consultation and discovery
+- 🔐 Secure user authentication
+- 📱 Fully responsive design
+- ⚡ Fast performance with Next.js
+- 🎨 Modern and user-friendly UI
 
-## 🚀 Key Features
+## 🛠️ Tech Stack
+- Next.js
+- React.js
+- TypeScript
+- Tailwind CSS
+- AI API Integration
+- Authentication System
+- Vercel (Deployment)
 
-* **🌐 Universal Document Support:** natively parses Word Documents (`.docx` viaMammoth.js), Images/PDFs (multi-modal Gemini Vision API), raw text input, and extracts and runs files from nested `.zip` archives.
-* **📈 Real-Time Telemetry Counters:** counts parsed contract clauses dynamically with clean glowing statistics (`TOTAL CLAUSES`, `DANGEROUS`, `FAIR`).
-* **📊 Category-Wise Risk Breakdown:** visualizes specific threat vectors (Liability, Termination, Privacy, Compensation, IP Rights) on a GPU-accelerated horizontal bar chart.
-* **🔴 Dynamic Threat Color Sync:** finding cards, warnings, and border-glow frequencies automatically cycle between Red (High Risk), Amber (Moderate), and Green (Low) based on the clause severity.
-* **💻 Unix Script renegotiation Timeline:** renders actionable contract revisions as step-by-step shell script patches (e.g. `LEGAL_PATCH_01.SH`) along an interactive timeline.
+## 🚀 Getting Started
 
----
-
-## 🛠️ Architecture & Tech Stack
-
-LexGuard is engineered as a **Zero-Setup Single Page Application (SPA)**, optimized for hackathons and offline demonstrations.
-- **Core:** Vanilla HTML5, CSS3, and modern Javascript.
- - **AI Core:** Google Gemini Pro (`v1beta` / `gemini-2.5-flash`, with fallback support via Vercel API route).
-- **AI Core:** Google Gemini Pro (`v1beta` / `gemini-2.5-flash`, with fallback support).
-
-- **Parsers:** `mammoth.browser.js` (Word parsing), `jszip.js` (ZIP archive extractors).
-- **Typography:** `JetBrains Mono` (Terminal elements), `Outfit` & `Inter` (UI headers & content).
-
----
-
-## ⚡ Quick Start
-
-### Option A: Local HTTP Server (Recommended)
-LexGuard runs best inside a lightweight local server. To start the server:
-1. Open PowerShell or Terminal in the root directory.
-2. Run:
+1. Clone the repository
    ```bash
-   python -m http.server 8000 --bind 127.0.0.1
+   git clone <repository-url>
    ```
-3. Open your browser and navigate to: **[http://127.0.0.1:8000/](http://127.0.0.1:8000/)**
 
-### Option B: Standalone File Launch
-Double-click **`index.html`** in your File Explorer to run it directly inside your default web browser without any installation!
+2. Install dependencies
+   ```bash
+   npm install
+   ```
 
----
+3. Run the development server
+   ```bash
+   npm run dev
+   ```
 
-## 🔑 AI Key Setup
+4. Open your browser
+   ```
+   http://localhost:3000
+   ```
 
- - **AI Core:** Google Gemini Pro (`v1beta` / `gemini-2.5-flash`, with fallback support via Vercel API route).
-To connect LexGuard to the live Gemini API:
-1. Get your API Key from [Google AI Studio](https://aistudio.google.com/).
-2. Open the website in your browser.
-3. When prompted, paste your Gemini API key and keep it saved locally in the browser.
-4. Refresh the page and run a scan.
+## 📂 Project Structure
 
-
----
-
-## 📁 Repository Structure
-```bash
-Ascent new/
-├── index.html        # Main dashboard structure & markup
-├── styles.css        # Premium Cyberpunk theme, animations & layouts
-├── app.js            # Gemini API integration, parsers, and UI controller
-└── README.md         # Documentation & Quickstart Guide
 ```
+app/
+components/
+public/
+lib/
+styles/
+```
+
+## 🌐 Live Demo
+
+https://lex-guard-six.vercel.app/
+
+## 📌 Key Highlights
+
+- AI-powered legal assistance for everyday legal queries.
+- Analyze contracts and identify important clauses with AI.
+- Generate professional legal notices in minutes.
+- Connect users with legal professionals for expert guidance.
+- Built with a scalable and responsive architecture for an enhanced user experience.
+
+## 📌 Disclaimer
+
+LexGuard is intended for educational and informational purposes only. The AI-generated responses should not be considered a substitute for professional legal advice. Users are encouraged to consult qualified legal professionals for legal matters requiring expert judgment.
+
+## 👨‍💻 Author
+
+**Syed Asger Mehdi**
